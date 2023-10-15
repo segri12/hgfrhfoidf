@@ -1,0 +1,320 @@
+        static void Main(string[] args)
+        {
+            Arena arena = new Arena(); 
+            Fight fight = new Fight(); 
+            EditTools editTools = new EditTools(); 
+            Fighter rightFighter;
+            Fighter leftFighter; 
+
+            if (arena.AreFightersPresent()) 
+            {
+                leftFighter = arena.ChooseFighter(editTools, "\nВыберите левого бойца: ");
+                rightFighter = arena.ChooseFighter(editTools, "\nВыберите правого бойца: ");
+
+                editTools.ShowMessage("Бой начался разорвите друг друга!"); 
+
+                fight.Fighting(leftFighter, rightFighter);
+            }
+
+            Console.ReadKey();
+        }
+    }
+
+    class Arena
+    {
+        public Arena()
+        {
+            _fighters.AddRange(new Fighter[]
+            {
+                new Skeleton(name: "Скелет", damage: 90, health: 830, armor: 0), 
+                new Darkpriest(name: "Тёмный жрец", damage: 45, health: 480, armor: 130),
+                new Daemon(name: "Демон", damage: 55, health: 340, armor: 180),
+                new Darkelf(name: "Темный эльф", damage: 55, health: 355, armor: 55),
+                new Lord(name: "Владыка", damage: 55, health: 600, armor: 0)
+            });
+        }
+
+        public Fighter ChooseFighter(EditTools editTools, string message) 
+        {
+            while (true) 
+            {
+                ShowFighters(); 
+
+                bool wasConverted = editTools.GetNumber(message, out int userNumber); 
+
+                if (editTools.VerificateCorrectnesValue(wasConverted, _fighters.Count, userNumber, "\nНомер не найден!") == false) 
+                    continue;
+
+                Fighter selectedFighter = _fighters[--userNumber]; 
+                _fighters.Remove(selectedFighter); 
+
+                editTools.ShowMessage($"\nБоец выбран!" +                               
+                                      $"\n{selectedFighter.GetProperties()}");     
+
+                return selectedFighter;  
+            }
+        }
+
+        public bool AreFightersPresent()  
+        {
+            return _fighters.Count > 1;
+        }
+
+        private List<Fighter> _fighters = new List<Fighter>();
+
+        private void ShowFighters() 
+        {
+            for (int i = 0; i < _fighters.Count; i++) 
+            {
+                int numberFighter = i + 1;
+                Console.WriteLine($"{numberFighter} - {_fighters[i].Name}");
+            }
+        }
+    }
+
+    class Fight 
+    {
+        public void Fighting(Fighter leftFighter, Fighter rightFighter) 
+        {
+            bool isLeftFighterAlive = true; 
+            bool isRightFighterAlive = true; 
+
+            while (isLeftFighterAlive && isRightFighterAlive) 
+            {
+                leftFighter.ShowStatus();
+                rightFighter.ShowStatus();
+
+                rightFighter.Attack(leftFighter);
+                leftFighter.Attack(rightFighter);
+
+                Console.ReadKey(); 
+                Console.Clear();
+
+                if (leftFighter.Health <= 0) 
+                    isLeftFighterAlive = false; 
+
+                if (rightFighter.Health <= 0) 
+                    isRightFighterAlive = false; 
+            }
+           
+            if (isLeftFighterAlive == false && isRightFighterAlive == false)
+                Console.Write("Ничья.");
+
+            else if (isLeftFighterAlive == false) 
+                Console.Write($"{rightFighter.Name} победил!");
+
+            else 
+                Console.Write($"{leftFighter.Name} победил!");
+        }
+    }
+
+    abstract class Fighter 
+    {
+        public Fighter(string name, int damage, int health, int armor)
+        {
+            Name = name;
+            Damage = damage;
+            Health = health;
+            Armor = armor;
+            IsSkillUnused = true; 
+        }
+
+        public string Name { get; protected set; } 
+        public int Damage { get; protected set; }
+        public int Health { get; protected set; }
+        public int Armor { get; protected set; }
+        public bool IsSkillUnused { get; protected set; } 
+
+        abstract public void UseSpecialSkill(); 
+        public virtual void Attack(Fighter victim) 
+        {
+            victim.TakeDamage(Damage); 
+
+            if (HasSpecialSkillBeenUsed()) 
+                UseSpecialSkill(); 
+        }
+
+        public string GetProperties() 
+        {
+            return
+            $"Характеристики бойца " +
+            $"\nКласс - {Name}" +
+            $"\nУрон - {Damage}" +
+            $"\nБроня - {Armor}" +
+            $"\nЗдоровье - {Health}";
+        }
+
+        public void ShowStatus() 
+        {
+            Console.WriteLine($"{Name}" +
+                $"\nБроня - {Armor}");
+            Console.ForegroundColor = ConsoleColor.Blue; 
+            Console.WriteLine($"Здоровье - {Health}");
+            Console.ForegroundColor = ConsoleColor.Gray; 
+            Console.WriteLine($"\n++++++++++++++++++++++++++");
+        }
+
+        public void TakeSkillDamage(int skillDamage) 
+        {
+            Health -= skillDamage; 
+            Health = CheckValueProperty(Health); 
+        }
+
+        protected void TakeDamage(int opponentDamage) 
+        {
+            int calculationDamage = opponentDamage; 
+            int damageDivider = 2; 
+
+            if (Armor > 0) 
+            {
+                calculationDamage /= damageDivider; 
+                Armor -= calculationDamage; 
+            }
+
+            Health -= calculationDamage; 
+
+            Armor = CheckValueProperty(Armor); 
+            Health = CheckValueProperty(Health); 
+        }
+
+        protected bool HasSpecialSkillBeenUsed() 
+        {
+            Random random = new Random();
+
+            int heads = 1; 
+            int tails = 2; 
+                           
+            if (random.Next(tails) == heads && IsSkillUnused)
+                return true;
+
+            return false;
+        }
+
+        private int CheckValueProperty(int value)  
+        {
+            if (value < 0)
+                return 0;
+
+            return value;  
+        }
+    }
+
+    class Skeleton : Fighter  
+    {
+        public Skeleton(string name, int damage, int health, int armor) : base(name, damage, health, armor) { }
+
+        public override void Attack(Fighter victim) { base.Attack(victim); } 
+
+        public override void UseSpecialSkill() 
+        {
+            IsSkillUnused = false; 
+            Damage *= (int)SpecialSkillValue.DamageMultiplier;  
+            Console.Write($"\n{Name} использовал благословение скелета и увеличивает урон. - {Damage}");
+        }
+    }
+
+    class Darkpriest : Fighter  
+    {
+        public Darkpriest(string name, int damage, int health, int armor) : base(name, damage, health, armor) { }
+
+        public override void Attack(Fighter victim) { base.Attack(victim); }
+
+        public override void UseSpecialSkill()
+        {
+            Health += (int)SpecialSkillValue.Healing;               
+            Console.Write($"\n{Name} использовал молитву тёмных жрецов и вылечил себя {(int)SpecialSkillValue.Healing} очков здоровья увеличины!");
+        }
+    }
+
+    class Daemon : Fighter 
+    {
+        public Daemon(string name, int damage, int health, int armor) : base(name, damage, health, armor) { }
+
+        public override void Attack(Fighter victim) { base.Attack(victim); }
+
+        public override void UseSpecialSkill()
+        {
+            Armor += (int)SpecialSkillValue.IncreaseArmor;
+            Console.Write($"\n{Name} сожрал приспешника и теперь его броня увеличена - {Armor}");
+        }
+    }
+
+    class Darkelf : Fighter  
+    {
+        public Darkelf(string name, int damage, int health, int armor) : base(name, damage, health, armor) { }
+
+        public override void Attack(Fighter victim)
+        {
+            base.Attack(victim);  
+                                  
+            victim.TakeSkillDamage((int)SpecialSkillValue.CriticalHit);     
+        }
+
+        public override void UseSpecialSkill()
+        {
+            Console.Write($"\n{Name} использовала критический прием и нанёса  {(int)SpecialSkillValue.CriticalHit} урона");
+        }
+    }
+
+    class Lord : Fighter  
+    {
+        public Lord(string name, int damage, int health, int armor) : base(name, damage, health, armor) { }
+
+        public override void Attack(Fighter victim)
+        {
+            base.Attack(victim);
+
+            victim.TakeSkillDamage((int)SpecialSkillValue.StealHealth);    
+            Health += (int)SpecialSkillValue.StealHealth;
+        }
+
+        public override void UseSpecialSkill()
+        {
+            Health += (int)SpecialSkillValue.StealHealth;
+            Console.Write($"\n{Name} использовал магию паразитизма и забрал у врага здоровье {(int)SpecialSkillValue.StealHealth} ");
+        }
+    }
+
+    class EditTools 
+    {
+        public void ShowMessage(string message) 
+        {
+            Console.Write(message);
+            Console.ReadKey();
+            Console.Clear();
+        }
+
+        public bool GetNumber(string message, out int number)
+        {
+            Console.Write(message);
+            bool wasConverted = int.TryParse(Console.ReadLine(), out number); 
+            return wasConverted;
+        }
+
+        public bool VerificateCorrectnesValue(bool valueBeingVerificate, int countElementsInCollection, int numberList, string message)  
+        {
+            if (valueBeingVerificate == false) 
+            {
+                ShowMessage("\nВведено некорректное значение!"); 
+                return false;
+            }
+
+            if (numberList <= 0 || numberList > countElementsInCollection)  
+            {
+                ShowMessage(message);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    enum SpecialSkillValue 
+    {
+        Healing = 250,
+        DamageMultiplier = 2,
+        IncreaseArmor = 90,
+        StealHealth = 130,
+        CriticalHit = 250
+    }
+}
